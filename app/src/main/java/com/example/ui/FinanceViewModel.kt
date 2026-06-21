@@ -53,6 +53,10 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
     private val _isUnlocked = MutableStateFlow(false)
     val isUnlocked = _isUnlocked.asStateFlow()
 
+    // Custom App Icon path state
+    private val _customIconPath = MutableStateFlow<String?>(null)
+    val customIconPath = _customIconPath.asStateFlow()
+
     init {
         val database = FinanceDatabase.getDatabase(application)
         repository = FinanceRepository(database.financeDao())
@@ -70,6 +74,7 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         _isPinEnabled.value = prefs.getBoolean("pin_enabled", false)
         _savedPin.value = prefs.getString("saved_pin", "1234") ?: "1234"
         _isUnlocked.value = !_isPinEnabled.value // If PIN lock is disabled, it is unlocked automatically
+        _customIconPath.value = prefs.getString("custom_icon_path", null)
 
         // Load or initialize categories
         loadCategories()
@@ -171,6 +176,11 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         if (_isPinEnabled.value) {
             _isUnlocked.value = false
         }
+    }
+
+    fun setCustomIconPath(path: String?) {
+        _customIconPath.value = path
+        prefs.edit().putString("custom_icon_path", path).apply()
     }
 
     fun updateSearchQuery(query: String) {

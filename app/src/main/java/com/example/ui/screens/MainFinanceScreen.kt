@@ -1,8 +1,13 @@
 package com.example.ui.screens
 
 import android.content.Context
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -59,6 +64,7 @@ fun MainFinanceScreen(
     val budgets by viewModel.allBudgets.collectAsStateWithLifecycle()
     val isUnlocked by viewModel.isUnlocked.collectAsStateWithLifecycle()
     val isPinEnabled by viewModel.isPinEnabled.collectAsStateWithLifecycle()
+    val customIconPath by viewModel.customIconPath.collectAsStateWithLifecycle()
 
     var showAddDialog by remember { mutableStateOf(false) }
     var editingTransaction by remember { mutableStateOf<TransactionEntity?>(null) }
@@ -108,15 +114,24 @@ fun MainFinanceScreen(
                             .size(38.dp)
                             .clip(CircleShape)
                             .background(SubCardGrey)
-                            .border(1.dp, AccentGrey, CircleShape),
+                            .border(1.dp, if (customIconPath != null) NeonCyan else AccentGrey, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.CurrencyExchange,
-                            contentDescription = null,
-                            tint = NeonCyan,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        if (customIconPath != null) {
+                            AsyncImage(
+                                model = customIconPath,
+                                contentDescription = "Custom Loader / App Icon",
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.CurrencyExchange,
+                                contentDescription = null,
+                                tint = NeonCyan,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -244,6 +259,7 @@ fun SecureLockScreen(
     val context = LocalContext.current
     var pinInput by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
+    val customIconPath by viewModel.customIconPath.collectAsStateWithLifecycle()
 
     LaunchedEffect(pinInput) {
         if (pinInput.length == 4) {
@@ -273,12 +289,33 @@ fun SecureLockScreen(
                 .padding(24.dp)
                 .widthIn(max = 400.dp)
         ) {
-            Icon(
-                imageVector = Icons.Default.Security,
-                contentDescription = null,
-                tint = if (isError) NeonRed else NeonCyan,
-                modifier = Modifier.size(64.dp)
-            )
+            if (customIconPath != null) {
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(CardGrey)
+                        .border(1.5.dp, if (isError) NeonRed else NeonCyan, RoundedCornerShape(14.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(java.io.File(customIconPath!!))
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Custom App Identity Logo",
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Security,
+                    contentDescription = null,
+                    tint = if (isError) NeonRed else NeonCyan,
+                    modifier = Modifier.size(64.dp)
+                )
+            }
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = "BRANKAS KEUANGAN TERKUNCI",
@@ -1082,6 +1119,29 @@ fun BudgetTab(
     }
 }
 
+// Helper to copy selected file URI into local sandboxed system
+private fun saveUriToInternalStorage(context: Context, uri: android.net.Uri): java.io.File? {
+    return try {
+        val inputStream = context.contentResolver.openInputStream(uri) ?: return null
+        val file = java.io.File(context.filesDir, "custom_app_icon_${System.currentTimeMillis()}.png")
+        context.filesDir.listFiles()?.forEach { f ->
+            if (f.name.startsWith("custom_app_icon") && f.exists()) {
+                f.delete()
+            }
+        }
+        val outputStream = java.io.FileOutputStream(file)
+        inputStream.use { input ->
+            outputStream.use { output ->
+                input.copyTo(output)
+            }
+        }
+        file
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
+    }
+}
+
 // ---------------- SETTINGS TAB ----------------
 @Composable
 fun SettingsTab(
@@ -1091,6 +1151,21 @@ fun SettingsTab(
     val categoriesExpense by viewModel.customExpenseCategories.collectAsStateWithLifecycle()
     val categoriesIncome by viewModel.customIncomeCategories.collectAsStateWithLifecycle()
     val isPinEnabled by viewModel.isPinEnabled.collectAsStateWithLifecycle()
+    val customIconPath by viewModel.customIconPath.collectAsStateWithLifecycle()
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            val file = saveUriToInternalStorage(context, uri)
+            if (file != null) {
+                viewModel.setCustomIconPath(file.absolutePath)
+                Toast.makeText(context, "Ikon kustom berhasil dipasang!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, "Gagal memproses gambar!", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     var expenseCategoryInput by remember { mutableStateOf("") }
     var incomeCategoryInput by remember { mutableStateOf("") }
@@ -1478,6 +1553,185 @@ fun SettingsTab(
                             ),
                             chipBorder = AssistChipDefaults.assistChipBorder(borderColor = AccentGrey)
                         )
+                    }
+                }
+            }
+        }
+
+        // App Icon Customizer Manager Card
+        Card(
+            colors = CardDefaults.cardColors(containerColor = CardGrey),
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "KUSTOMISASI IKON APLIKASI",
+                    color = NeonCyan,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Ubah ikon aplikasi di pengaturan dan bilah navigasi dengan foto Anda sendiri.",
+                    color = TextSecondary,
+                    fontSize = 11.sp
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Simulated Beautiful Android Launcher / Homescreen widget
+                Text(
+                    text = "PRATINJAU LAYAR BERANDA SIMULASI",
+                    color = TextMuted,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(SolidBlack)
+                        .border(1.dp, NeonCyan.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        // Mock Status Bar / Info time
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("12:00", color = TextSecondary, fontSize = 9.sp, fontFamily = FontFamily.Monospace)
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.Wifi, contentDescription = null, tint = TextMuted, modifier = Modifier.size(10.dp))
+                                Icon(Icons.Default.BatteryChargingFull, contentDescription = null, tint = NeonCyan, modifier = Modifier.size(10.dp))
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Launcher 4-items Grid
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Mock App 1: Telepon
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(CircleShape)
+                                        .background(SubCardGrey)
+                                        .border(1.dp, AccentGrey, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.Phone, contentDescription = null, tint = Color(0xFF2ECC71), modifier = Modifier.size(24.dp))
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("Telepon", color = TextPrimary, fontSize = 9.sp)
+                            }
+
+                            // Dynamic App 2: FinanceFlow (Our custom logo!)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(CircleShape)
+                                        .background(SubCardGrey)
+                                        .border(2.dp, NeonCyan, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (customIconPath != null) {
+                                        AsyncImage(
+                                            model = customIconPath,
+                                            contentDescription = "Dynamic Custom Icon Preview",
+                                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Icon(Icons.Default.CurrencyExchange, contentDescription = null, tint = NeonCyan, modifier = Modifier.size(22.dp))
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("FinanceFlow", color = NeonCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+
+                            // Mock App 3: Kamera
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(CircleShape)
+                                        .background(SubCardGrey)
+                                        .border(1.dp, AccentGrey, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.PhotoCamera, contentDescription = null, tint = Color(0xFF95A5A6), modifier = Modifier.size(24.dp))
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("Kamera", color = TextPrimary, fontSize = 9.sp)
+                            }
+
+                            // Mock App 4: Pesan
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(CircleShape)
+                                        .background(SubCardGrey)
+                                        .border(1.dp, AccentGrey, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.Message, contentDescription = null, tint = Color(0xFF3498DB), modifier = Modifier.size(24.dp))
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text("Pesan", color = TextPrimary, fontSize = 9.sp)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Actions buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = { imagePickerLauncher.launch("image/*") },
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonCyan, contentColor = SolidBlack),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("PILIH FOTO BARU", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    if (customIconPath != null) {
+                        Button(
+                            onClick = {
+                                viewModel.setCustomIconPath(null)
+                                Toast.makeText(context, "Ikon kustom disetel kembali ke bawaan", Toast.LENGTH_SHORT).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = AccentGrey, contentColor = NeonRed),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("GUNAKAN BAWAAN", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -1979,5 +2233,22 @@ fun CalculatorKeyboard(
                 }
             }
         }
+    }
+}
+
+private fun copyUriToLocal(context: Context, uri: Uri): java.io.File? {
+    return try {
+        val inputStream = context.contentResolver.openInputStream(uri) ?: return null
+        val outputFile = java.io.File(context.filesDir, "custom_app_icon.png")
+        if (outputFile.exists()) {
+            outputFile.delete()
+        }
+        outputFile.outputStream().use { outputStream ->
+            inputStream.use { it.copyTo(outputStream) }
+        }
+        outputFile
+    } catch (e: Exception) {
+        e.printStackTrace()
+        null
     }
 }

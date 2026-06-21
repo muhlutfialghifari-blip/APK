@@ -93,7 +93,7 @@ dependencies {
   implementation("androidx.appcompat:appcompat:1.7.0")
   implementation(libs.androidx.room.ktx)
   implementation(libs.androidx.room.runtime)
-  // implementation(libs.coil.compose)
+  implementation(libs.coil.compose)
   implementation(libs.converter.moshi)
   implementation(libs.firebase.ai)
   implementation(libs.kotlinx.coroutines.android)
