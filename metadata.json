@@ -1,0 +1,6 @@
+{
+  "name": "Finance Tracker",
+  "description": "Enterprise-grade native Android Finance Tracker with offline-first Room DB, budgeting, and biometric lock.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
