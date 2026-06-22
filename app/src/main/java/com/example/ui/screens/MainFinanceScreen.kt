@@ -87,7 +87,7 @@ fun MainFinanceScreen(
                 title = {
                     Column {
                         Text(
-                            text = "FINANCEFLOW PRO",
+                            text = "ALGHI 💞 LISA",
                             color = TextMuted,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
