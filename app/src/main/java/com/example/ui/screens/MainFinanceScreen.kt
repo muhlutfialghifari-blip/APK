@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.foundation.background
@@ -14,6 +15,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -261,6 +263,11 @@ fun SecureLockScreen(
     var isError by remember { mutableStateOf(false) }
     val customIconPath by viewModel.customIconPath.collectAsStateWithLifecycle()
 
+    var lockScreenVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        lockScreenVisible = true
+    }
+
     LaunchedEffect(pinInput) {
         if (pinInput.length == 4) {
             val success = viewModel.verifyPin(pinInput)
@@ -277,144 +284,150 @@ fun SecureLockScreen(
         }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(SolidBlack),
-        contentAlignment = Alignment.Center
+    AnimatedVisibility(
+        visible = lockScreenVisible,
+        enter = fadeIn(animationSpec = tween(durationMillis = 850, easing = LinearOutSlowInEasing)),
+        exit = fadeOut(animationSpec = tween(durationMillis = 500, easing = LinearOutSlowInEasing))
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
+        Box(
             modifier = Modifier
-                .padding(24.dp)
-                .widthIn(max = 400.dp)
+                .fillMaxSize()
+                .background(SolidBlack),
+            contentAlignment = Alignment.Center
         ) {
-            if (customIconPath != null) {
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(CardGrey)
-                        .border(1.5.dp, if (isError) NeonRed else NeonCyan, RoundedCornerShape(14.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(context)
-                            .data(java.io.File(customIconPath!!))
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "Custom App Identity Logo",
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Security,
-                    contentDescription = null,
-                    tint = if (isError) NeonRed else NeonCyan,
-                    modifier = Modifier.size(64.dp)
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "BRANKAS KEUANGAN TERKUNCI",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace,
-                color = if (isError) NeonRed else NeonCyan
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Masukkan PIN Keamanan untuk membuka",
-                fontSize = 12.sp,
-                color = TextSecondary,
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // PIN Indicator Dots
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .padding(24.dp)
+                    .widthIn(max = 400.dp)
             ) {
-                for (i in 0 until 4) {
-                    val isActive = i < pinInput.length
+                if (customIconPath != null) {
                     Box(
                         modifier = Modifier
-                            .size(16.dp)
-                            .clip(CircleShape)
-                            .background(
-                                when {
-                                    isError -> NeonRed
-                                    isActive -> NeonCyan
-                                    else -> AccentGrey
-                                }
-                            )
+                            .size(64.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(CardGrey)
+                            .border(1.5.dp, if (isError) NeonRed else NeonCyan, RoundedCornerShape(14.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(java.io.File(customIconPath!!))
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Custom App Identity Logo",
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Security,
+                        contentDescription = null,
+                        tint = if (isError) NeonRed else NeonCyan,
+                        modifier = Modifier.size(64.dp)
                     )
                 }
-            }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "BRANKAS KEUANGAN TERKUNCI",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace,
+                    color = if (isError) NeonRed else NeonCyan
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Masukkan PIN Keamanan untuk membuka",
+                    fontSize = 12.sp,
+                    color = TextSecondary,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(24.dp))
 
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            Text(
-                text = "(PIN Bawaan: 1234)",
-                fontSize = 11.sp,
-                color = TextMuted,
-                fontFamily = FontFamily.Monospace
-            )
+                // PIN Indicator Dots
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    for (i in 0 until 4) {
+                        val isActive = i < pinInput.length
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    when {
+                                        isError -> NeonRed
+                                        isActive -> NeonCyan
+                                        else -> AccentGrey
+                                    }
+                                )
+                        )
+                    }
+                }
 
-            Spacer(modifier = Modifier.height(30.dp))
-
-            // Numeric Keypad Grid
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                val rows = listOf(
-                    listOf("1", "2", "3"),
-                    listOf("4", "5", "6"),
-                    listOf("7", "8", "9"),
-                    listOf("C", "0", "⌫")
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text(
+                    text = "(PIN Bawaan: 1234)",
+                    fontSize = 11.sp,
+                    color = TextMuted,
+                    fontFamily = FontFamily.Monospace
                 )
 
-                rows.forEach { row ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        row.forEach { char ->
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .aspectRatio(1.8f)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(CardGrey)
-                                    .clickable {
-                                        if (isError) return@clickable
-                                        when (char) {
-                                            "C" -> pinInput = ""
-                                            "⌫" -> {
-                                                if (pinInput.isNotEmpty()) {
-                                                    pinInput = pinInput.dropLast(1)
+                Spacer(modifier = Modifier.height(30.dp))
+
+                // Numeric Keypad Grid
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val rows = listOf(
+                        listOf("1", "2", "3"),
+                        listOf("4", "5", "6"),
+                        listOf("7", "8", "9"),
+                        listOf("C", "0", "⌫")
+                    )
+
+                    rows.forEach { row ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            row.forEach { char ->
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .aspectRatio(1.8f)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(CardGrey)
+                                        .clickable {
+                                            if (isError) return@clickable
+                                            when (char) {
+                                                "C" -> pinInput = ""
+                                                "⌫" -> {
+                                                    if (pinInput.isNotEmpty()) {
+                                                        pinInput = pinInput.dropLast(1)
+                                                    }
+                                                }
+                                                else -> {
+                                                    if (pinInput.length < 4) {
+                                                        pinInput += char
+                                                    }
                                                 }
                                             }
-                                            else -> {
-                                                if (pinInput.length < 4) {
-                                                    pinInput += char
-                                                }
-                                            }
-                                        }
-                                    },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = char,
-                                    fontSize = 20.sp,
-                                    color = if (char == "C" || char == "⌫") NeonCyan else TextPrimary,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace
-                                )
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = char,
+                                        fontSize = 20.sp,
+                                        color = if (char == "C" || char == "⌫") NeonCyan else TextPrimary,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
                             }
                         }
                     }
@@ -632,10 +645,11 @@ fun DashboardTab(
                 }
             }
         } else {
-            items(transactions.take(5)) { tx ->
+            itemsIndexed(transactions.take(5)) { index, tx ->
                 TransactionRowItem(
                     transaction = tx,
-                    onEdit = onEditTransaction
+                    onEdit = onEditTransaction,
+                    staggerIndex = index
                 )
             }
         }
@@ -647,101 +661,122 @@ fun DashboardTab(
 @Composable
 fun TransactionRowItem(
     transaction: TransactionEntity,
-    onEdit: (TransactionEntity) -> Unit
+    onEdit: (TransactionEntity) -> Unit,
+    staggerIndex: Int = 0
 ) {
     val df = DecimalFormat("Rp #,##0", java.text.DecimalFormatSymbols(java.util.Locale("id", "ID")))
     val dateSdf = SimpleDateFormat("dd MMM, hh:mm a", Locale.getDefault())
 
-    Card(
-        colors = CardDefaults.cardColors(containerColor = SubCardGrey.copy(alpha = 0.6f)),
-        shape = RoundedCornerShape(16.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, AccentGrey.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
-            .clickable { onEdit(transaction) }
+    var isVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(key1 = transaction.id) {
+        kotlinx.coroutines.delay(staggerIndex * 50L)
+        isVisible = true
+    }
+
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = fadeIn(animationSpec = tween(durationMillis = 450, easing = LinearOutSlowInEasing)) +
+                slideInVertically(
+                    initialOffsetY = { 40 },
+                    animationSpec = tween(durationMillis = 450, easing = LinearOutSlowInEasing)
+                ) +
+                scaleIn(
+                    initialScale = 0.95f,
+                    animationSpec = tween(durationMillis = 450, easing = LinearOutSlowInEasing)
+                ),
+        exit = fadeOut(animationSpec = tween(durationMillis = 200))
     ) {
-        Row(
+        Card(
+            colors = CardDefaults.cardColors(containerColor = SubCardGrey.copy(alpha = 0.6f)),
+            shape = RoundedCornerShape(16.dp),
             modifier = Modifier
-                .padding(12.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .fillMaxWidth()
+                .border(1.dp, AccentGrey.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+                .clickable { onEdit(transaction) }
         ) {
             Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier
+                    .padding(12.dp)
+                    .fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Type Icon
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(
-                            when (transaction.type) {
-                                "INCOME" -> NeonCyan.copy(alpha = 0.15f)
-                                "EXPENSE" -> NeonRed.copy(alpha = 0.15f)
-                                else -> NeonViolet.copy(alpha = 0.15f)
-                            }
-                        ),
-                    contentAlignment = Alignment.Center
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = when (transaction.type) {
-                            "INCOME" -> Icons.Default.ArrowDownward
-                            "EXPENSE" -> Icons.Default.ArrowUpward
-                            else -> Icons.Default.SwapHoriz
-                        },
-                        contentDescription = null,
-                        tint = when (transaction.type) {
+                    // Type Icon
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(
+                                when (transaction.type) {
+                                    "INCOME" -> NeonCyan.copy(alpha = 0.15f)
+                                    "EXPENSE" -> NeonRed.copy(alpha = 0.15f)
+                                    else -> NeonViolet.copy(alpha = 0.15f)
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = when (transaction.type) {
+                                "INCOME" -> Icons.Default.ArrowDownward
+                                "EXPENSE" -> Icons.Default.ArrowUpward
+                                else -> Icons.Default.SwapHoriz
+                            },
+                            contentDescription = null,
+                            tint = when (transaction.type) {
+                                "INCOME" -> NeonCyan
+                                "EXPENSE" -> NeonRed
+                                else -> NeonViolet
+                            },
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    val displaySource = if (transaction.sourceAccount == "Cash") "Tunai" else transaction.sourceAccount
+                    val displayDest = if (transaction.destinationAccount == "Cash") "Tunai" else transaction.destinationAccount
+
+                    Column {
+                        Text(
+                            text = transaction.category,
+                            color = TextPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "${displaySource}${if (transaction.type == "TRANSFER") " ➔ " + displayDest else ""} • ${transaction.note.ifBlank { "Belum ada catatan" }}",
+                            color = TextSecondary,
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "${if (transaction.type == "INCOME") "+" else if (transaction.type == "EXPENSE") "-" else ""}${df.format(transaction.amount)}",
+                        color = when (transaction.type) {
                             "INCOME" -> NeonCyan
                             "EXPENSE" -> NeonRed
                             else -> NeonViolet
                         },
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(10.dp))
-
-                val displaySource = if (transaction.sourceAccount == "Cash") "Tunai" else transaction.sourceAccount
-                val displayDest = if (transaction.destinationAccount == "Cash") "Tunai" else transaction.destinationAccount
-
-                Column {
-                    Text(
-                        text = transaction.category,
-                        color = TextPrimary,
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "${displaySource}${if (transaction.type == "TRANSFER") " ➔ " + displayDest else ""} • ${transaction.note.ifBlank { "Belum ada catatan" }}",
+                        text = dateSdf.format(Date(transaction.timestamp)),
                         color = TextSecondary,
-                        fontSize = 11.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        fontSize = 10.sp
                     )
                 }
-            }
-
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = "${if (transaction.type == "INCOME") "+" else if (transaction.type == "EXPENSE") "-" else ""}${df.format(transaction.amount)}",
-                    color = when (transaction.type) {
-                        "INCOME" -> NeonCyan
-                        "EXPENSE" -> NeonRed
-                        else -> NeonViolet
-                    },
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = dateSdf.format(Date(transaction.timestamp)),
-                    color = TextSecondary,
-                    fontSize = 10.sp
-                )
             }
         }
     }
@@ -822,13 +857,17 @@ fun HistoryTab(
                         )
                     }
 
-                    items(entry.value) { tx ->
+                    itemsIndexed(entry.value) { index, tx ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Box(modifier = Modifier.weight(1f)) {
-                                TransactionRowItem(transaction = tx, onEdit = onEdit)
+                                TransactionRowItem(
+                                    transaction = tx,
+                                    onEdit = onEdit,
+                                    staggerIndex = index
+                                )
                             }
                             IconButton(onClick = { onDelete(tx) }) {
                                 Icon(Icons.Default.Delete, contentDescription = "Delete", tint = NeonRed)
