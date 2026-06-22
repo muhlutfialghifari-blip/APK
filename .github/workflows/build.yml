@@ -15,8 +15,10 @@ jobs:
           distribution: 'temurin'
       - name: Create .env file
         run: echo "GEMINI_API_KEY=YOUR_API_KEY_HERE" > .env
+      - name: Generate Gradle Wrapper
+        run: gradle wrapper
       - name: Build with Gradle
-        run: chmod +x gradlew && ./gradlew assembleDebug
+        run: ./gradlew assembleDebug
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
